@@ -1,11 +1,29 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flavor_poc/app_config.dart';
 import 'package:flutter/material.dart';
 
-void runWithAppConfig(AppConfig config) {
+Future<void> runWithAppConfig(AppConfig config) async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isIOS) {
+    await Firebase.initializeApp(options: config.options);
+  } else {
+    await Firebase.initializeApp();
+  }
+
   runApp(MyApp(
     appConfig: config,
   ));
 }
+
+
+
+
+
+
 
 class MyApp extends StatelessWidget {
   final AppConfig appConfig;
@@ -32,19 +50,13 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  TextEditingController controller = TextEditingController();
+  final FirebaseFirestore db = FirebaseFirestore.instance;
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
+  Future<dynamic> getFlavorInfo() async {
+    QuerySnapshot<Map<String, dynamic>> snapshot =
+        await db.collection('test').get();
+    List<dynamic> list = snapshot.docs.map((e) => e.data()["text"]).toList();
+    return list[0];
   }
 
   @override
@@ -57,20 +69,23 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            FutureBuilder(
+                future: getFlavorInfo(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Text(
+                      snapshot.data ?? "",
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    );
+                  } else {
+                    return Text(
+                      "Loading",
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    );
+                  }
+                }),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
